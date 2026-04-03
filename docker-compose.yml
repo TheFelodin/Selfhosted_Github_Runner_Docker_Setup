@@ -1,0 +1,46 @@
+services:
+  github-runner:
+    # Build the runner image with dynamic configuration
+    build:
+      context: .
+      args:
+        # CPU architecture for the runner (arm64 for Raspberry Pi)
+        RUNNER_ARCH: arm64
+        # Docker-in-Docker capabilities
+        # Docker group ID from host system - must match host's docker group
+        # Get with: getent group docker | cut -d: -f3
+        DOCKER_GID: ${DOCKER_GID}
+
+    # Load environment variables from .env file
+    env_file:
+      - .env
+
+    # Runtime environment configuration
+    environment:
+      # GitHub repository URL to register runner with (one of these must be set)
+      REPO_URL: https://github.com/Repo-name-here
+      ORG_URL: https://github.com/Org-name-here
+
+
+      # Personal Access Token for automatic runner token generation
+      # Create at: https://github.com/settings/tokens with 'repo' and 'workflow' scopes for repo runners,
+      # or 'admin:org' scope for org runners
+      ACCESS_TOKEN: ${ACCESS_TOKEN}
+
+      # Custom name for this runner instance
+      RUNNER_NAME: raspi-runner
+      # Labels for workflow targeting (comma-separated)
+      LABELS: raspi,linux,arm64,docker
+
+    # Mount Docker socket for Docker-in-Docker capabilities
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+        - /stacks/telegram-epub-fetcher-bot:/opt/app
+        - /home/pi/.ssh/github_deploy:/home/runner/.ssh/id_ed25519:ro
+
+    # Automatically restart unless manually stopped
+    restart: unless-stopped
+
+    # Add DOCKER_GID to group
+    group_add:
+      - "${DOCKER_GID}"
