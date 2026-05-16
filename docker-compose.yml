@@ -15,57 +15,5 @@ x-runner-base: &runner-base
 services: {}
 
 # ──────────────────────────────────────────────────────────────
-# Beispiel-Service – in docker-compose.override.yml eintragen
+# Service werden in docker-compose.override.yml eintragen
 # ──────────────────────────────────────────────────────────────
-#
-# services:
-#   mein-repo:                                    # <- Service-Name (frei wählbar)
-#     <<: *runner-base
-#     environment:
-#       REPO_NAME: mein-repo                      # <- Runner-Name & Label im Workflow
-#       REPO_URL: https://github.com/USER/REPO    # <- Repo-URL
-#     volumes:
-#       - /var/run/docker.sock:/var/run/docker.sock
-#       - mein-repo:/github/workspace             # <- Workspace-Volume (gleicher Name)
-#
-#       # Optional: App-Verzeichnis für Deploy-Jobs mounten
-#       # - /stacks/mein-repo:/opt/app
-#
-#       # Optional: SSH-Deploy-Key für private Repos
-#       # - /home/pi/.ssh/github_deploy:/home/runner/.ssh/id_ed25519:ro
-#
-# volumes:
-#   mein-repo:                                    # <- Muss für jeden Service ergänzt werden
-#
-# ──────────────────────────────────────────────────────────────
-# Im GitHub Actions Workflow dann:
-#
-#   jobs:
-#     deploy:
-#       runs-on: mein-repo
-#
-# ──────────────────────────────────────────────────────────────
-# Mehrere Services: einfach den Block wiederholen
-#
-# services:
-#   repo-eins:
-#     <<: *runner-base
-#     environment:
-#       REPO_NAME: repo-eins
-#       REPO_URL: https://github.com/USER/repo-eins
-#     volumes:
-#       - /var/run/docker.sock:/var/run/docker.sock
-#       - repo-eins:/github/workspace
-#
-#   repo-zwei:
-#     <<: *runner-base
-#     environment:
-#       REPO_NAME: repo-zwei
-#       REPO_URL: https://github.com/USER/repo-zwei
-#     volumes:
-#       - /var/run/docker.sock:/var/run/docker.sock
-#       - repo-zwei:/github/workspace
-#
-# volumes:
-#   repo-eins:
-#   repo-zwei:
