@@ -7,14 +7,11 @@ Self-hosted GitHub Actions Runner für persönliche Repositories auf einem Raspb
 ## Funktionsweise
 
 ```
-docker-compose.yml        →  Basis-Konfiguration (Anchor &runner-base)
-docker-compose.override.yml  →  Deine Repositories (wird nie committed)
-.env                      →  Secrets (wird nie committed)
-Dockerfile                →  Ubuntu + GitHub Runner Binary
-start.sh                  →  Token holen, registrieren, starten
+docker-compose.yml   →  Anchor &runner-base + alle Runner-Services
+.env                 →  Secrets (wird nie committed)
+Dockerfile           →  Ubuntu + GitHub Runner Binary
+start.sh             →  Token holen, registrieren, starten
 ```
-
-Docker Compose liest `docker-compose.yml` und `docker-compose.override.yml` automatisch zusammen. Jeder Service in der `override.yml` wird zu einem eigenständigen Runner-Container.
 
 ---
 
@@ -43,13 +40,9 @@ DOCKER_GID=998                          # getent group docker | cut -d: -f3
 Der Personal Access Token benötigt die Scopes `repo` und `workflow`. Erstellen unter:
 [github.com/settings/tokens](https://github.com/settings/tokens)
 
-### 3. `docker-compose.override.yml` anlegen
+### 3. Repos in `docker-compose.yml` eintragen
 
-```bash
-cp docker-compose.override.yml.example docker-compose.override.yml
-```
-
-Eigene Repositories eintragen (siehe Abschnitt [Services konfigurieren](#services-konfigurieren)).
+Services und Volumes für eigene Repositories ergänzen – ein Block pro Repo (Beispiel ist bereits auskommentiert enthalten).
 
 ### 4. Image bauen und starten
 
@@ -61,38 +54,31 @@ Runner tauchen danach unter `Settings → Actions → Runners` im jeweiligen Rep
 
 ---
 
-## Services konfigurieren
+## Neues Repository anbinden
 
-Alle Services kommen in die `docker-compose.override.yml`. Pro Repository ein Service-Block:
+1. Service-Block in `docker-compose.yml` ergänzen:
 
 ```yaml
-services:
   mein-repo:
     <<: *runner-base
     environment:
-      REPO_NAME: mein-repo                       # Runner-Name und Label
+      REPO_NAME: mein-repo
       REPO_URL: https://github.com/USER/mein-repo
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - mein-repo:/github/workspace
+```
 
-      # Optional: App-Verzeichnis für Deploy-Jobs
-      # - /stacks/mein-repo:/opt/app
+2. Volume ergänzen:
 
-      # Optional: SSH Deploy Key für private Repos
-      # - /home/pi/.ssh/github_deploy:/home/runner/.ssh/id_ed25519:ro
-
+```yaml
 volumes:
   mein-repo:
 ```
 
-`REPO_NAME` wird automatisch als Runner-Name **und** als Label registriert. Mehrere Repositories einfach als weitere Service-Blöcke anhängen.
-
-### Neuen Service hinzufügen
+3. Nur der neue Container wird gestartet, bestehende bleiben unberührt:
 
 ```bash
-# 1. override.yml editieren – neuen Block eintragen
-# 2. Nur der neue Container wird gestartet, bestehende bleiben unberührt:
 docker compose up -d
 ```
 
@@ -108,11 +94,9 @@ jobs:
     runs-on: [self-hosted, "${{ github.event.repository.name }}"]
 ```
 
-`github.event.repository.name` entspricht dem Repository-Namen – dieser muss mit `REPO_NAME` in der `override.yml` übereinstimmen.
+`github.event.repository.name` entspricht dem Repository-Namen – dieser muss mit `REPO_NAME` in der `docker-compose.yml` übereinstimmen.
 
 ### Empfohlene Workflow-Konfiguration
-
-Parallel-Jobs bei schnell aufeinanderfolgenden Pushes automatisch abbrechen:
 
 ```yaml
 concurrency:
@@ -120,12 +104,27 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    ...
+
+  test:
+    runs-on: ubuntu-latest
+    ...
+
   deploy:
+    needs: [lint, test]
     runs-on: [self-hosted, "${{ github.event.repository.name }}"]
+    if: startsWith(github.ref, 'refs/tags/v')
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
       - name: Deploy
-        run: docker compose -f /stacks/${{ github.event.repository.name }}/docker-compose.yml up -d --build
+        run: |
+          docker compose down --remove-orphans
+          docker compose up -d --build
+          docker image prune -f
 ```
 
 ---
@@ -136,9 +135,7 @@ jobs:
 |---|---|---|
 | `Dockerfile` | ✅ | Ubuntu-Image mit Runner-Binary und Docker CLI |
 | `start.sh` | ✅ | Token holen, Runner registrieren, starten |
-| `docker-compose.yml` | ✅ | Basis-Anchor `&runner-base` |
-| `docker-compose.override.yml.example` | ✅ | Vorlage für eigene Services |
-| `docker-compose.override.yml` | ❌ | Eigene Services (host-spezifisch) |
+| `docker-compose.yml` | ✅ | Basis-Anchor + alle Runner-Services |
 | `.env.example` | ✅ | Vorlage für Secrets |
 | `.env` | ❌ | Secrets (ACCESS_TOKEN, DOCKER_GID) |
 
@@ -146,7 +143,21 @@ jobs:
 
 ## Token-Verwaltung
 
-`start.sh` holt beim Start automatisch ein frisches Runner-Token über die GitHub API (`ACCESS_TOKEN`). Der Runner-Token selbst läuft nach ~1h ab, wird aber im Hintergrund alle 50 Minuten erneuert ohne den Container neu starten zu müssen.
+`start.sh` holt beim Start automatisch ein frisches Runner-Token über die GitHub API (`ACCESS_TOKEN`). Der Token wird alle 50 Minuten im Hintergrund erneuert ohne den Container neu starten zu müssen.
+
+---
+
+## Deployment
+
+Dieses Repo wird **einmalig manuell** auf dem Pi eingerichtet – ein automatisches Deployment via Pipeline wäre ein Henne-Ei-Problem, da der Runner der deployen soll erst durch dieses Setup entsteht.
+
+Updates einspielen:
+
+```bash
+cd Selfhosted_Github_Runner_Docker_Setup
+git pull
+docker compose up -d --build
+```
 
 ---
 

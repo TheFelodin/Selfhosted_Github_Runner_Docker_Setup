@@ -12,8 +12,67 @@ x-runner-base: &runner-base
   group_add:
     - "${DOCKER_GID}"
 
-services: {}
+# ──────────────────────────────────────────────────────────────
+# Services – ein Block pro Repository
+# Neues Repo hinzufügen:
+#   1. Service-Block kopieren und REPO_NAME + REPO_URL anpassen
+#   2. Volume unter "volumes:" ergänzen
+#   3. docker compose up -d  (bestehende Container bleiben unberührt)
+#
+# Im GitHub Actions Workflow:
+#   runs-on: [self-hosted, "${{ github.event.repository.name }}"]
+# ──────────────────────────────────────────────────────────────
 
-# ──────────────────────────────────────────────────────────────
-# Service werden in docker-compose.override.yml eintragen
-# ──────────────────────────────────────────────────────────────
+services:
+  telegram-epub-fetcher-bot:
+    <<: *runner-base
+    environment:
+      REPO_NAME: telegram-epub-fetcher-bot
+      REPO_URL: https://github.com/TheFelodin/telegram-epub-fetcher-bot
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - telegram-epub-fetcher-bot:/github/workspace
+
+  calibre-zotero-bridge:
+    <<: *runner-base
+    environment:
+      REPO_NAME: calibre-zotero-bridge
+      REPO_URL: https://github.com/TheFelodin/calibre-zotero-bridge
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - calibre-zotero-bridge:/github/workspace
+
+  assistant:
+    <<: *runner-base
+    environment:
+      REPO_NAME: assistant
+      REPO_URL: https://github.com/TheFelodin/assistant
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - assistant:/github/workspace
+
+  rr_epub_tool:
+    <<: *runner-base
+    environment:
+      REPO_NAME: rr_epub_tool
+      REPO_URL: https://github.com/TheFelodin/rr_epub_tool
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - rr_epub_tool:/github/workspace
+
+  # Beispiel – neues Repo eintragen:
+  # mein-repo:
+  #   <<: *runner-base
+  #   environment:
+  #     REPO_NAME: mein-repo
+  #     REPO_URL: https://github.com/TheFelodin/mein-repo
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #     - mein-repo:/github/workspace
+
+volumes:
+  telegram-epub-fetcher-bot:
+  calibre-zotero-bridge:
+  assistant:
+  rr_epub_tool:
+  # mein-repo:
