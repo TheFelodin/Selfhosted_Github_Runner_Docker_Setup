@@ -78,7 +78,8 @@ setup_runner() {
         --token ${RUNNER_TOKEN} \
         --name ${RUNNER_NAME:-$(hostname)} \
         --work /github/workspace \
-        --labels ${LABELS:-self-hosted,linux,x64,docker} \
+        --labels "self-hosted,linux,arm64,docker,${REPO_NAME}" \
+        --name "${REPO_NAME}" \
         --replace
 }
 
