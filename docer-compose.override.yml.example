@@ -30,4 +30,3 @@ services:
 
 volumes:
   mein-repo:
-  # weiterer-repo:
